@@ -80,8 +80,29 @@ bool ObjectFinder::find_toy_block(float surface_height, geometry_msgs::PoseStamp
     //if insufficient points in plane, find_plane_fit returns "false"
     //should do more sanity testing on found_object status
     //hard-coded search bounds based on a block of width 0.035
-    found_object = pclUtils_.find_plane_fit(0.4, 1, -0.5, 0.5, surface_height + 0.025, surface_height + 0.045, 0.001,
-            plane_normal, plane_dist, major_axis, centroid);
+    bool toy_found;
+    bool cube_found;
+    //found_object = pclUtils_.find_plane_fit(0.4, 1, -0.5, 0.5, surface_height + 0.025, surface_height + 0.045, 0.001,
+    //        plane_normal, plane_dist, major_axis, centroid);
+    toy_found = pclUtils_.find_plane_fit(0.4, 1, -0.5, 0.5, surface_height + 0.025, surface_height + 0.045, 0.001,
+        plane_normal, plane_dist, major_axis, centroid);
+    cube_found = pclUtils_.find_plane_fit(0.4, 1, -0.5, 0.5, surface_height + 0.060, surface_height + 0.080, 0.001,
+            plane_normal, plane_dist, major_axis, centroid); 
+    if (toy_found){
+        ROS_INFO("toy_found! It is a toy_bock not a cube!");
+        found_object = true;
+    }
+    else if(cube_found) {
+        ROS_INFO("cube_found! It is a toy_cube not a rectangular block!");
+        found_object = true;
+    }
+    else{
+        ROS_INFO("Neither toy block or toy_cube found");
+        found_object = false;
+        return = found_object;
+    }
+
+    //        plane_normal, plane_dist, major_axis, centroid);)
     //should have put a return value on find_plane_fit;
     //
     if (plane_normal(2) < 0) plane_normal(2) *= -1.0; //in world frame, normal must point UP
@@ -105,6 +126,8 @@ bool ObjectFinder::find_toy_block(float surface_height, geometry_msgs::PoseStamp
     object_pose.pose.orientation.w = quat.w();
     return found_object;
 }
+
+
 
 float ObjectFinder::find_table_height() {
     int npts_plane_max = 0;
@@ -178,7 +201,7 @@ void ObjectFinder::executeCB(const actionlib::SimpleActionServer<object_finder::
             //specialized function to find toy block model
             found_object = find_toy_block(surface_height, object_pose); //special case for toy block
             if (found_object) {
-                ROS_INFO("found toy block!");
+                ROS_INFO("found toy block or toy_cube!");
                 result_.found_object_code = object_finder::objectFinderResult::OBJECT_FOUND;
                 result_.object_pose = object_pose;
                 object_finder_as_.setSucceeded(result_);
