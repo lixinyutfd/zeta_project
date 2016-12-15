@@ -82,11 +82,12 @@ bool ObjectFinder::find_toy_block(float surface_height, geometry_msgs::PoseStamp
     //hard-coded search bounds based on a block of width 0.035
     bool toy_found;
     bool cube_found;
+    ROS_INFO("start finding");
     //found_object = pclUtils_.find_plane_fit(0.4, 1, -0.5, 0.5, surface_height + 0.025, surface_height + 0.045, 0.001,
     //        plane_normal, plane_dist, major_axis, centroid);
-    toy_found = pclUtils_.find_plane_fit(0.4, 1, -0.5, 0.5, surface_height + 0.025, surface_height + 0.045, 0.001,
+    cube_found = pclUtils_.find_plane_fit(0.4, 1, -0.5, 0.5, surface_height + 0.025, surface_height + 0.045, 0.001,
         plane_normal, plane_dist, major_axis, centroid);
-    cube_found = pclUtils_.find_plane_fit(0.4, 1, -0.5, 0.5, surface_height + 0.060, surface_height + 0.080, 0.001,
+    toy_found = pclUtils_.find_plane_fit(0.4, 1, -0.5, 0.5, surface_height + 0.060, surface_height + 0.080, 0.001,
             plane_normal, plane_dist, major_axis, centroid); 
     if (toy_found){
         ROS_INFO("toy_found! It is a toy_bock not a cube!");
@@ -99,7 +100,7 @@ bool ObjectFinder::find_toy_block(float surface_height, geometry_msgs::PoseStamp
     else{
         ROS_INFO("Neither toy block or toy_cube found");
         found_object = false;
-        return = found_object;
+        return  found_object;
     }
 
     //        plane_normal, plane_dist, major_axis, centroid);)
@@ -181,7 +182,7 @@ void ObjectFinder::executeCB(const actionlib::SimpleActionServer<object_finder::
         surface_height_ = table_ht; //remember this value for potential future use
         found_surface_height_ = true;
     }
-
+    ROS_INFO("HERE?");
 
     switch (object_id) {
         case ObjectIdCodes::COKE_CAN_UPRIGHT:
@@ -198,6 +199,7 @@ void ObjectFinder::executeCB(const actionlib::SimpleActionServer<object_finder::
             }
             break;
         case ObjectIdCodes::TOY_BLOCK_ID:
+        	ROS_INFO("here?");
             //specialized function to find toy block model
             found_object = find_toy_block(surface_height, object_pose); //special case for toy block
             if (found_object) {
