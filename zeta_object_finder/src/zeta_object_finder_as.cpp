@@ -113,7 +113,7 @@ bool ObjectFinder::find_toy_block(float surface_height, geometry_msgs::PoseStamp
     R.col(2) = plane_normal;
     R.col(1) = plane_normal.cross(major_axis);
     Eigen::Quaternionf quat(R);
-    object_pose.header.frame_id = "base_link";
+    object_pose.header.frame_id = "base";
     object_pose.pose.position.x = centroid(0);
     object_pose.pose.position.y = centroid(1);
     //the TOY_BLOCK model has its origin in the middle of the block, not the top surface
@@ -219,7 +219,7 @@ void ObjectFinder::executeCB(const actionlib::SimpleActionServer<object_finder::
             ROS_INFO("object finder: finding/returning table height");
                 result_.found_object_code = object_finder::objectFinderResult::OBJECT_FOUND;
                 //rtn result in an object_pose: surface height w/rt world
-                object_pose.header.frame_id = "base_link";
+                object_pose.header.frame_id = "base";
                 object_pose.pose.position.x = 0.5; //arbitrarily place origin 0.5m in front of robot
                 object_pose.pose.position.y = 0.0; //centered, left/right
                 object_pose.pose.position.z = surface_height_; //computed value w/rt base_link

@@ -10,11 +10,13 @@
 //#include <object_manipulation_properties/object_manipulation_properties.h>
 #include <object_finder/objectFinderAction.h>
 #include <object_grabber/object_grabberAction.h>
+#include <std_msgs/Int32.h>
 bool g_goal_done = true;
 int g_callback_status = coordinator::ManipTaskResult::PENDING;
 int g_object_grabber_return_code = 0;
 int g_object_finder_return_code = 0;
 int g_fdbk_count = 0;
+int g_objectid;
 
 geometry_msgs::PoseStamped g_des_flange_pose_stamped_wrt_torso;
 geometry_msgs::PoseStamped g_object_pose;
@@ -32,7 +34,9 @@ void doneCb(const actionlib::SimpleClientGoalState& state,
     switch (g_callback_status) {
         case coordinator::ManipTaskResult::MANIP_SUCCESS:
             ROS_INFO("returned MANIP_SUCCESS");
+
             break;
+
         case coordinator::ManipTaskResult::FAILED_PERCEPTION:
             ROS_WARN("returned FAILED_PERCEPTION");
             g_object_finder_return_code = result->object_finder_return_code;
@@ -68,11 +72,38 @@ void activeCb() {
     ROS_INFO("Goal just went active");
 }
 
+void subcb(const std_msgs::Int32& objectid){
+    g_objectid = objectid.data;
+}
+
 int main(int argc, char** argv) {
     ros::init(argc, argv, "task_client_node"); // name this node 
-    ros::NodeHandle nh; //standard ros node handle  
+    ros::NodeHandle nh; //standard ros node handle
+
 
     coordinator::ManipTaskGoal goal;
+    //desired right pose;
+    geometry_msgs::PoseStamped rdesired_pose;
+    rdesired_pose.header.frame_id = "torso";
+    rdesired_pose.pose.position.x = 0.5;
+    rdesired_pose.pose.position.y = 0.35; //-0.35;
+    rdesired_pose.pose.position.z = -0.12;
+    rdesired_pose.pose.orientation.x = 0.1;
+    rdesired_pose.pose.orientation.y = 0.1;
+    rdesired_pose.pose.orientation.z = 0.5;
+    rdesired_pose.pose.orientation.w = 0;
+    rdesired_pose.header.stamp = ros::Time::now(); 
+    //desired left pose;
+    geometry_msgs::PoseStamped ldesired_pose;
+    ldesired_pose.header.frame_id = "torso";
+    ldesired_pose.pose.position.x = 0.5;
+    ldesired_pose.pose.position.y = -0.35; //-0.35;
+    ldesired_pose.pose.position.z = -0.12;
+    ldesired_pose.pose.orientation.x = 0.1;
+    ldesired_pose.pose.orientation.y = 0.1;
+    ldesired_pose.pose.orientation.z = 0.5;
+    ldesired_pose.pose.orientation.w = 0;
+    ldesired_pose.header.stamp = ros::Time::now(); 
 
     actionlib::SimpleActionClient<coordinator::ManipTaskAction> action_client("manip_task_action_service", true);
 
@@ -109,8 +140,6 @@ int main(int argc, char** argv) {
     }
 
     int ans = 1;
-    //define a dropoff pose; 
-    geometry_msgs::PoseStamped desired_pose;
 
     while (true) {
         ROS_INFO("ready to look for block; enter 1 when you are ready, or 0 to stop: ");
@@ -119,7 +148,6 @@ int main(int argc, char** argv) {
         if (ans == 0) return 0;
 
         //send vision goal to find block:
-	// look for the toy block first i.e. the red rectangular block
         ROS_INFO("sending a goal: find block");
         g_goal_done = false;
         goal.action_code = coordinator::ManipTaskGoal::GET_PICKUP_POSE;
@@ -131,9 +159,6 @@ int main(int argc, char** argv) {
         }
         if (g_callback_status != coordinator::ManipTaskResult::MANIP_SUCCESS) {
             ROS_ERROR("failed to find block");
-	// if the toy block is not found now look for the other block
-	// Should be if statement that looks for the other block and then if that isn't found repeat the process until told to stop looking for 
-	
         } else { //here if found block
 
 
@@ -161,53 +186,33 @@ int main(int argc, char** argv) {
             if (g_callback_status != coordinator::ManipTaskResult::MANIP_SUCCESS) {
                 ROS_ERROR("failed to straddle block; ");
             }
-	    
-	    // The block is curently being straddled and now we need to try to sweep it off
-	    else {
-
-		// create pose for the arm to move to, to try to push the block off
-		//define a dropoff pose; We want to move the block to the left as far as we can go and we want to move in the direction of most contact so we will want to define an eliptical trajectory if possible for first test just move left in the direction of surface, will need to make a new solution for when the block is directly horizontal
-
-		
-    		desired_pose.header.frame_id = g_object_pose.header.frame_id;
-    		desired_pose.pose.position.x = g_object_pose.pose.position.x;
-    		desired_pose.pose.position.y = .1; //All the way off the table
-    		desired_pose.pose.position.z = g_object_pose.pose.position.z + 0.03;
-    		desired_pose.pose.orientation.x = 0.707;
-    		desired_pose.pose.orientation.y = 0.707;
-    		desired_pose.pose.orientation.z = 0;
-    		desired_pose.pose.orientation.w = 0;
-    		desired_pose.header.stamp = ros::Time::now(); 
-
-
-		// adding if statement to move the hand to the left or to the right
-        // for cube
-		if (g_result.object_id != 0){
-			desired_pose.pose.position.y = -.1; //All the way off the table
-		}
-	
-		//send command to move gripper to destination pose: 
-            	ROS_INFO("sending a goal: move gripper to hard-coded destination");
-            	g_goal_done = false;
-            	goal.action_code = coordinator::ManipTaskGoal::CART_MOVE_TO_GRIPPER_POSE;
-            	goal.gripper_goal_frame = desired_pose;
-            	action_client.sendGoal(goal, &doneCb, &activeCb, &feedbackCb);
-            	while (!g_goal_done) {
-                	ros::Duration(0.1).sleep();
-            	}
-            	if (g_callback_status != coordinator::ManipTaskResult::MANIP_SUCCESS) {
-                	ROS_ERROR("failed to perform Cartesian move; ");
-            	}
-
-
-	    }
-
-	    // Now that the arm is over the block we want to move the robot arm to try to sweep the block off of the desk
-	    // Do this by calling the cart move to gripper pose
         }
 
-        //ROS_INFO("enter 1 to return to pre-pose: ");
-        //std::cin>>ans;
+        //successfully straddled, need to move
+        ros::Subscriber sub = nh.subscribe("objectid", 1, subcb);
+        ros::spinOnce();
+
+        ROS_INFO("sending a goal: move gripper to hard-coded destination");
+            g_goal_done = false;
+            goal.action_code = coordinator::ManipTaskGoal::CART_MOVE_TO_GRIPPER_POSE;
+            if (g_objectid == 0){
+                goal.gripper_goal_frame = rdesired_pose;
+            }
+            else{
+                goal.gripper_goal_frame = ldesired_pose;
+            }
+            action_client.sendGoal(goal, &doneCb, &activeCb, &feedbackCb);
+            while (!g_goal_done) {
+                ros::Duration(0.1).sleep();
+            }
+            if (g_callback_status != coordinator::ManipTaskResult::MANIP_SUCCESS) {
+                ROS_ERROR("failed to perform Cartesian move; ");
+                return 0;
+            }
+        
+
+        ROS_INFO("enter 1 to return to pre-pose: ");
+        std::cin>>ans;
 
         ROS_INFO("sending a goal: move to pre-pose");
         g_goal_done = false;
@@ -220,6 +225,7 @@ int main(int argc, char** argv) {
             ROS_ERROR("failed to move to pre-pose; quitting");
             return 0;
         }
+
     }
 }
 

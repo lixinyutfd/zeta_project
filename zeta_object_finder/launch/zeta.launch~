@@ -11,7 +11,7 @@
   <node name="from_torso_to_camera_link_static_tf" pkg="tf" type="static_transform_publisher" args="0.2 0.1 0.8 0 1.5 6 base camera_link 50"/>
 
   <node pkg="object_grabber" type="set_baxter_gripper_param" name="set_baxter_gripper_param"  output="screen"/>    
-  <include file="$(find cartesian_planner)/launch/baxter_static_transforms.launch"/>     
+  <!-- include file="$(find cartesian_planner)/launch/baxter_static_transforms.launch"/ -->     
   
     
   <node pkg="baxter_trajectory_streamer" type="rt_arm_as" name="rt_arm_as"  output="screen"/>
